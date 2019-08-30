@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/spf13/cobra"
 	"io/ioutil"
+	"log"
 	"os"
 	"os/exec"
 	"strings"
@@ -36,37 +37,38 @@ func ReadFile(path string) (string, error) {
 	return text, nil
 }
 func ExecWithParams(cmd *cobra.Command, args []string) {
-	fmt.Println("hi")
-
-	if len(args) == 2 {
-		files, err := ioutil.ReadDir(args[0])
-		if err != nil {
-			cmd.PrintErr("no such dir")
-			return
-		}
-		var flags []string
-		flags = append(flags, args[1])
-		for _, file := range files {
-			flag := file.Name()
-			arg, err := ReadFile(args[0] + "/" + flag)
-			if err != nil {
-				fmt.Println(err)
-				cmd.PrintErr("file " + flag + " is empty\n")
-			}
-			flags = append(flags, "-"+flag+"="+arg)
-		}
-		c1 := exec.Command(strings.Join(flags, " "))
-		fmt.Println(strings.Join(flags, " "))
-		stdout, _ := c1.StdoutPipe()
-		r := bufio.NewReader(stdout)
-		line, _, _ := r.ReadLine()
-		fmt.Println(string(line))
+	if len(args) != 2 {
+		log.Fatal("needed only to params")
 	}
+	files, err := ioutil.ReadDir(args[0])
+	if err != nil {
+		cmd.PrintErr("no such dir")
+		return
+	}
+	var flags []string
+	flags = append(flags)
+	for _, file := range files {
+		envVar := file.Name()
+		arg, err := ReadFile(args[0] + "/" + envVar)
+		if err != nil {
+			fmt.Println(err)
+			cmd.PrintErr("file " + envVar + " is empty\n")
+		}
+		err = os.Setenv(envVar, arg)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+	c1 := exec.Command(args[1])
+	fmt.Println(strings.Join(flags, " "))
+	stdout, _ := c1.StdoutPipe()
+	r := bufio.NewReader(stdout)
+	line, _, _ := r.ReadLine()
+	fmt.Println(string(line))
 }
 
 func Execute() {
 	if err := rootCmd.Execute(); err != nil {
-		fmt.Println(err)
-		os.Exit(1)
+		log.Fatal(err)
 	}
 }
